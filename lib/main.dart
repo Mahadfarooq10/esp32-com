@@ -1,6 +1,6 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'esp32_service.dart';
+import 'plot_graphs.dart';
 
 void main() => runApp(MyApp());
 
@@ -24,58 +24,77 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String _response = '';
+  double? _temperature;
+  List<List<double>> _data = [];
 
-  Future<void> connectToESP32() async {
-    const String host = '192.168.8.1';
-    const int port = 8088;
-    const int maxRetries = 3;
-    int retryCount = 0;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('ESP32 Communication'),
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          ElevatedButton(
+            onPressed: _connectToESP32,
+            child: _response == 'processing...'
+                ? SizedBox(
+                    width:
+                        24, // Adjust the width to match the size of the CircularProgressIndicator
+                    height:
+                        24, // Adjust the height to match the size of the CircularProgressIndicator
+                    child: CircularProgressIndicator(),
+                  )
+                : Text('Get data from ESP32'),
+          ),
+          ElevatedButton(
+            onPressed: _readFile,
+            child: Text('Read and Plot Data'),
+          ),
+          SizedBox(height: 20),
+          Text(_response),
+          if (_temperature != null)
+            Text('Temperature: ${_temperature!.toStringAsFixed(2)}°C'),
+          Expanded(
+            child: _data.isEmpty
+                ? Center(child: CircularProgressIndicator())
+                : ListView(
+                    children: [
+                      plotGraph("Voltage vs MP", 0, 2, Colors.red, 'Voltage(V)',
+                          'Measure Point(MP)', _data),
+                      plotGraph("Current vs MP", 0, 3, Colors.blue,
+                          'Current(A)', 'Measure Point(MP)', _data),
+                      plotGraph("Irradiation vs MP", 0, 4, Colors.orange,
+                          'Irr(W/m²)', 'Measure Point(MP)', _data),
+                      plotGraph("Current vs Voltage", 2, 3, Colors.green,
+                          'Current(A)', 'Voltage(V)', _data),
+                      plotPowerGraph("Power vs Voltage", Colors.purple,
+                          'Power(W)', 'Voltage(V)', _data),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    while (retryCount < maxRetries) {
-      try {
-        final socket = await Socket.connect(host, port, timeout: Duration(seconds: 10));
-        socket.write('GO');
+  Future<void> _connectToESP32() async {
+    setState(() {
+      _response = 'processing...';
+    });
+    String response = await connectToESP32();
+    setState(() {
+      _response = response;
+    });
+    _clearResponseAfterDelay();
+  }
 
-        // Listen for the response
-        socket.listen((data) {
-          setState(() {
-            _response = utf8.decode(data);
-          });
-          _clearResponseAfterDelay();
-        }, onDone: () {
-          print('Connection closed');
-          socket.destroy();
-        }, onError: (error) {
-          setState(() {
-            _response = 'Connection Error: $error';
-          });
-          _clearResponseAfterDelay();
-          socket.destroy();
-        });
-
-        return; // Exit the loop on successful connection
-      } on SocketException catch (e) {
-        setState(() {
-          _response = 'SocketException: $e';
-        });
-        _clearResponseAfterDelay();
-      } catch (e) {
-        setState(() {
-          _response = 'Error: $e';
-        });
-        _clearResponseAfterDelay();
-      }
-
-      retryCount++;
-      await Future.delayed(Duration(seconds: 2)); // Wait before retrying
-    }
-
-    if (retryCount == maxRetries) {
-      setState(() {
-        _response = 'Failed to connect after $maxRetries attempts';
-      });
-      _clearResponseAfterDelay();
-    }
+  Future<void> _readFile() async {
+    Map<String, dynamic> fileData = await readFile();
+    setState(() {
+      _data = List<List<double>>.from(fileData['parsedData']);
+    });
   }
 
   void _clearResponseAfterDelay() {
@@ -84,27 +103,5 @@ class _MyHomePageState extends State<MyHomePage> {
         _response = '';
       });
     });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('ESP32 Communication'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            ElevatedButton(
-              onPressed: connectToESP32,
-              child: Text('Connect to ESP32'),
-            ),
-            SizedBox(height: 20),
-            Text(_response),
-          ],
-        ),
-      ),
-    );
   }
 }
