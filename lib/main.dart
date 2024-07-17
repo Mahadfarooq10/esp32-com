@@ -26,6 +26,10 @@ class _MyHomePageState extends State<MyHomePage> {
   String _response = '';
   double? _temperature;
   List<List<double>> _data = [];
+  final textController = TextEditingController();
+  String moduleId = "";
+  String latestFileName = "";
+
 
   @override
   void initState() {
@@ -34,14 +38,48 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   @override
+  void dispose() {
+    // Clean up the controller when the widget is removed from the widget tree.
+    textController.dispose();
+    super.dispose();
+  }
+
+  String sanitizeFileName(String input) {
+    // Define a regular expression to match invalid characters
+    final RegExp regExp = RegExp(r'[\/\\:*?"<>|]');
+    // Replace invalid characters with an underscore or any other character you prefer
+    return input.replaceAll(regExp, '_');
+  }
+
+  void _setModuleId(){
+    final sanitizedModuleId = sanitizeFileName(textController.text);
+    setState(() {
+      moduleId = sanitizedModuleId;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('ESP32 Communication'),
+        title: Text('IPV'),
       ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+            child: TextField(
+              controller: textController,
+              maxLines: null,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Enter module ID',
+              ),
+            ),
+          ),
+          ElevatedButton(onPressed: _setModuleId, child: Text('Update ID')),
+          Text('Module ID: $moduleId'),
           ElevatedButton(
             onPressed: _connectToESP32,
             child: _response == 'processing...'
@@ -89,11 +127,18 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _response = 'processing...';
     });
-    String response = await connectToESP32();
+    var response = await connectToESP32(moduleId);
+    if (response['status'] == 1){
+      setState(() {
+        latestFileName = response['fileName'];
+      });
+    }
     setState(() {
-      _response = response;
+      _response = response['msg'];
     });
-    _clearResponseAfterDelay();
+    if (_response == 'Successfully saved data!') {
+      _clearResponseAfterDelay();
+    }
   }
 
   Future<void> _readFile() async {
