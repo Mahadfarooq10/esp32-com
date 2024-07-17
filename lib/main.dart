@@ -28,6 +28,12 @@ class _MyHomePageState extends State<MyHomePage> {
   List<List<double>> _data = [];
 
   @override
+  void initState() {
+    super.initState();
+    requestStoragePermission();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
