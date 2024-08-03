@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'esp32_service.dart';
 import 'plot_graphs.dart';
-
+import 'file_explorer.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
@@ -24,17 +26,26 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String _response = '';
-  double? _temperature;
   List<List<double>> _data = [];
+  String _temp = '';
   final textController = TextEditingController();
   String moduleId = "";
   String latestFileName = "";
-
 
   @override
   void initState() {
     super.initState();
     requestStoragePermission();
+  }
+
+  Future<void> _onFileSelected(String fileName) async {
+    Directory? directory = await getExternalStorageDirectory();
+    String path = directory!.path.split("Android")[0] + "Download";
+    print('TESTING THIS FUNC: $path');
+    setState(() {
+      latestFileName = '$path/$fileName';
+    });
+    print('Selected file: $latestFileName');
   }
 
   @override
@@ -51,7 +62,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return input.replaceAll(regExp, '_');
   }
 
-  void _setModuleId(){
+  void _setModuleId() {
     final sanitizedModuleId = sanitizeFileName(textController.text);
     setState(() {
       moduleId = sanitizedModuleId;
@@ -93,13 +104,41 @@ class _MyHomePageState extends State<MyHomePage> {
                 : Text('Get data from ESP32'),
           ),
           ElevatedButton(
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: Text('Select File'),
+                  content: FileExplorer(onFileSelected: _onFileSelected),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text('Close'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            child: Text('Open File Explorer'),
+          ),
+          ElevatedButton(
             onPressed: _readFile,
             child: Text('Read and Plot Data'),
           ),
           SizedBox(height: 20),
           Text(_response),
-          if (_temperature != null)
-            Text('Temperature: ${_temperature!.toStringAsFixed(2)}°C'),
+          if (latestFileName != '')
+            Text(
+              'Selected File: $latestFileName',
+              style: TextStyle(fontSize: 12),
+            ),
+          if (_temp != '')
+            Text(
+              '$_temp °C',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
           Expanded(
             child: _data.isEmpty
                 ? Center(child: CircularProgressIndicator())
@@ -118,6 +157,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     ],
                   ),
           ),
+
         ],
       ),
     );
@@ -128,10 +168,11 @@ class _MyHomePageState extends State<MyHomePage> {
       _response = 'processing...';
     });
     var response = await connectToESP32(moduleId);
-    if (response['status'] == 1){
+    if (response['status'] == 1) {
       setState(() {
         latestFileName = response['fileName'];
       });
+      print('Returned filename: ${response['fileName']}');
     }
     setState(() {
       _response = response['msg'];
@@ -142,9 +183,10 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _readFile() async {
-    Map<String, dynamic> fileData = await readFile();
+    Map<String, dynamic> fileData = await readFile(latestFileName);
     setState(() {
       _data = List<List<double>>.from(fileData['parsedData']);
+      _temp = fileData['temp'];
     });
   }
 

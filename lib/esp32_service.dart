@@ -70,10 +70,12 @@ Future<void> requestStoragePermission() async {
   }
 }
 
-Future<Map<String, dynamic>> readFile() async {
+Future<Map<String, dynamic>> readFile(String fileName) async {
   Directory? directory = await getExternalStorageDirectory();
   String path = directory!.path.split("Android")[0] + "Download";
-  File file = File('$path/test.txt');
+  print('In readFile, param: $fileName');
+  print('In readFile, static: $path/test.txt');
+  File file = File(fileName);
   List<String> lines = await file.readAsLines();
   return parseData(lines);
 }
@@ -102,6 +104,8 @@ Map<String, dynamic> parseData(List<String> lines) {
   // Check if the first line contains temperature data and remove it
   if (lines.isNotEmpty && lines[0].contains('Temperature')) {
     String temp = lines[0];
+    data['temp'] = temp;
+    print('TEMPERATURE: $temp');
     lines.removeAt(0);
   }
   data['parsedData'] = parsedData;
