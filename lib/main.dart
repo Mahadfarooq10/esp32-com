@@ -4,6 +4,7 @@ import 'plot_graphs.dart';
 import 'file_explorer.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
@@ -31,6 +32,10 @@ class _MyHomePageState extends State<MyHomePage> {
   final textController = TextEditingController();
   String moduleId = "";
   String latestFileName = "";
+  double Vmpp = 0;
+  double Impp = 0;
+  double Pmpp = 0;
+  double irradiation = 0;
 
   @override
   void initState() {
@@ -41,11 +46,9 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _onFileSelected(String fileName) async {
     Directory? directory = await getExternalStorageDirectory();
     String path = directory!.path.split("Android")[0] + "Download";
-    print('TESTING THIS FUNC: $path');
     setState(() {
       latestFileName = '$path/$fileName';
     });
-    print('Selected file: $latestFileName');
   }
 
   @override
@@ -73,92 +76,227 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('IPV'),
+        title: Text('SEPIV'),
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-            child: TextField(
-              controller: textController,
-              maxLines: null,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Enter module ID',
+      body: SingleChildScrollView(
+        child: Column(
+          children: <Widget>[
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: TextField(
+                      controller: textController,
+                      maxLines: null,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(
+                              color: Colors.black), // Default border color
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                              color: Colors.black), // Border color when focused
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                              color: Colors.black), // Border color when enabled
+                        ),
+                        hintText: 'Enter module ID',
+                        hintStyle:
+                            TextStyle(color: Colors.black), // Hint text color
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  // Add some space between the text field and the button
+                  TextButton(
+                    onPressed: _setModuleId,
+                    style: TextButton.styleFrom(
+                      foregroundColor:
+                          Colors.black, // Set the text color to black
+                    ),
+                    child: Text('Update ID'),
+                  ),
+                ],
               ),
             ),
-          ),
-          ElevatedButton(onPressed: _setModuleId, child: Text('Update ID')),
-          Text('Module ID: $moduleId'),
-          ElevatedButton(
-            onPressed: _connectToESP32,
-            child: _response == 'processing...'
-                ? SizedBox(
-                    width:
-                        24, // Adjust the width to match the size of the CircularProgressIndicator
-                    height:
-                        24, // Adjust the height to match the size of the CircularProgressIndicator
-                    child: CircularProgressIndicator(),
-                  )
-                : Text('Get data from ESP32'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text('Select File'),
-                  content: FileExplorer(onFileSelected: _onFileSelected),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: Text('Close'),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 4, // Takes up half of the row's width
+                    child: Container(
+                      child: Column(
+                        children: [
+                          ElevatedButton(
+                            onPressed: _connectToESP32,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors
+                                  .blue, // Set the button's background color to blue
+                            ),
+                            child: _response == 'processing...'
+                                ? SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(),
+                                  )
+                                : Text(
+                                    'Measure',
+                                    style: TextStyle(
+                                        color: Colors
+                                            .white), // Set the text color to white
+                                  ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: Text('Select File'),
+                                  content: FileExplorer(
+                                      onFileSelected: _onFileSelected),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: Text(
+                                        'Close',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors
+                                  .blue, // Set the button's background color to blue
+                            ),
+                            child: Text(
+                              'File Explorer',
+                              style: TextStyle(
+                                  color: Colors
+                                      .white), // Set the text color to white
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: _readFile,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors
+                                  .blue, // Set the button's background color to blue
+                            ),
+                            child: Text(
+                              'Plot Graphs',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              );
-            },
-            child: Text('Open File Explorer'),
-          ),
-          ElevatedButton(
-            onPressed: _readFile,
-            child: Text('Read and Plot Data'),
-          ),
-          SizedBox(height: 20),
-          Text(_response),
-          if (latestFileName != '')
-            Text(
-              'Selected File: $latestFileName',
-              style: TextStyle(fontSize: 12),
-            ),
-          if (_temp != '')
-            Text(
-              '$_temp °C',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          Expanded(
-            child: _data.isEmpty
-                ? Center(child: CircularProgressIndicator())
-                : ListView(
-                    children: [
-                      plotGraph("Voltage vs MP", 0, 2, Colors.red, 'Voltage(V)',
-                          'Measure Point(MP)', _data),
-                      plotGraph("Current vs MP", 0, 3, Colors.blue,
-                          'Current(A)', 'Measure Point(MP)', _data),
-                      plotGraph("Irradiation vs MP", 0, 4, Colors.orange,
-                          'Irr(W/m²)', 'Measure Point(MP)', _data),
-                      plotGraph("Current vs Voltage", 2, 3, Colors.green,
-                          'Current(A)', 'Voltage(V)', _data),
-                      plotPowerGraph("Power vs Voltage", Colors.purple,
-                          'Power(W)', 'Voltage(V)', _data),
-                    ],
                   ),
-          ),
-
-        ],
+                  Expanded(
+                    flex: 6, // Takes up half of the row's width
+                    child: Container(
+                        margin: const EdgeInsets.all(10.0),
+                        padding: const EdgeInsets.all(5.0),
+                        decoration: BoxDecoration(
+                          border: Border.all(width: 3.0),
+                          borderRadius: BorderRadius.all(Radius.circular(
+                                  5.0) //                 <--- border radius here
+                              ),
+                        ),
+                        child: Column(
+                          children: [
+                            Text('Module ID: $moduleId',
+                                style: TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.bold)),
+                            if (_temp != '')
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('$_temp °C',
+                                      style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Irradiation: ',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold)),
+                                Text('$irradiation',
+                                    style: TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Vmpp: ',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold)),
+                                Text('$Vmpp', style: TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Impp: ',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold)),
+                                Text('$Impp', style: TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Pmpp: ',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold)),
+                                Text('$Pmpp', style: TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                          ],
+                        )),
+                  ),
+                ],
+              ),
+            ),
+            Text(_response),
+            Container(
+              // Remove the fixed height here
+              child: _data.isEmpty
+                  ? Center(
+                child: Text('No data to display', style: TextStyle(fontSize: 16)),
+              )
+                  : ListView(
+                shrinkWrap: true, // Add this property
+                physics: NeverScrollableScrollPhysics(), // Prevent ListView from scrolling independently
+                children: [
+                  plotGraph("Irradiation vs MP", 0, 4, Colors.orange,
+                      'Irr(W/m²)', 'Measure Point(MP)', _data),
+                  plotGraph("Current vs Voltage", 2, 3, Colors.green,
+                      'Current(A)', 'Voltage(V)', _data),
+                  plotPowerGraph("Power vs Voltage", Colors.purple,
+                      'Power(W)', 'Voltage(V)', _data),
+                  plotGraph("Voltage vs MP", 0, 2, Colors.red,
+                      'Voltage(V)', 'Measure Point(MP)', _data),
+                  plotGraph("Current vs MP", 0, 3, Colors.blue,
+                      'Current(A)', 'Measure Point(MP)', _data),
+                ],
+              ),
+            )
+          ],
+        ),
       ),
     );
   }
@@ -187,7 +325,37 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _data = List<List<double>>.from(fileData['parsedData']);
       _temp = fileData['temp'];
+      Impp = findMaxInColumn(_data, 3);
+      Vmpp = findMaxInColumn(_data, 2);
+      irradiation = findMeanInColumn(_data, 4);
+      Pmpp = findMaxPower(_data, 2, 3);
     });
+  }
+
+  double findMaxInColumn(List<List<double>> data, int columnIndex) {
+    return data.map((row) => row[columnIndex]).reduce((a, b) => a > b ? a : b);
+  }
+
+  double findMeanInColumn(List<List<double>> data, int columnIndex) {
+    List<double> columnValues = data.map((row) => row[columnIndex]).toList();
+    double sum = columnValues.reduce((a, b) => a + b);
+    double mean = sum / columnValues.length;
+    double roundedMean = double.parse(mean.toStringAsPrecision(3));
+    return roundedMean;
+  }
+
+  double findMaxPower(
+      List<List<double>> data, int voltageIndex, int currentIndex) {
+    double maxPower = 0.0;
+
+    for (var row in data) {
+      double power = row[voltageIndex] * row[currentIndex];
+      if (power > maxPower) {
+        maxPower = power;
+      }
+    }
+    double roundedPower = double.parse(maxPower.toStringAsPrecision(3));
+    return roundedPower;
   }
 
   void _clearResponseAfterDelay() {
