@@ -106,18 +106,14 @@ class _MyHomePageState extends State<MyHomePage> {
                         hintStyle:
                             TextStyle(color: Colors.black), // Hint text color
                       ),
+                      onChanged: (value) {
+                        setState(() {
+                          moduleId = value; // Update the moduleId with the new value
+                        });
+                      },
                     ),
                   ),
-                  SizedBox(width: 8),
                   // Add some space between the text field and the button
-                  TextButton(
-                    onPressed: _setModuleId,
-                    style: TextButton.styleFrom(
-                      foregroundColor:
-                          Colors.black, // Set the text color to black
-                    ),
-                    child: Text('Update ID'),
-                  ),
                 ],
               ),
             ),
@@ -276,24 +272,27 @@ class _MyHomePageState extends State<MyHomePage> {
               // Remove the fixed height here
               child: _data.isEmpty
                   ? Center(
-                child: Text('No data to display', style: TextStyle(fontSize: 16)),
-              )
+                      child: Text('No data to display',
+                          style: TextStyle(fontSize: 16)),
+                    )
                   : ListView(
-                shrinkWrap: true, // Add this property
-                physics: NeverScrollableScrollPhysics(), // Prevent ListView from scrolling independently
-                children: [
-                  plotGraph("Irradiation vs MP", 0, 4, Colors.orange,
-                      'Irr(W/m²)', 'Measure Point(MP)', _data),
-                  plotGraph("Current vs Voltage", 2, 3, Colors.green,
-                      'Current(A)', 'Voltage(V)', _data),
-                  plotPowerGraph("Power vs Voltage", Colors.purple,
-                      'Power(W)', 'Voltage(V)', _data),
-                  plotGraph("Voltage vs MP", 0, 2, Colors.red,
-                      'Voltage(V)', 'Measure Point(MP)', _data),
-                  plotGraph("Current vs MP", 0, 3, Colors.blue,
-                      'Current(A)', 'Measure Point(MP)', _data),
-                ],
-              ),
+                      shrinkWrap: true,
+                      // Add this property
+                      physics: NeverScrollableScrollPhysics(),
+                      // Prevent ListView from scrolling independently
+                      children: [
+                        plotGraph("Irradiation vs MP", 0, 4, Colors.orange,
+                            'Irr(W/m²)', 'Measure Point(MP)', _data),
+                        plotGraph("Current vs Voltage", 2, 3, Colors.green,
+                            'Current(A)', 'Voltage(V)', _data),
+                        plotPowerGraph("Power vs Voltage", Colors.purple,
+                            'Power(W)', 'Voltage(V)', _data),
+                        plotGraph("Voltage vs MP", 0, 2, Colors.red,
+                            'Voltage(V)', 'Measure Point(MP)', _data),
+                        plotGraph("Current vs MP", 0, 3, Colors.blue,
+                            'Current(A)', 'Measure Point(MP)', _data),
+                      ],
+                    ),
             )
           ],
         ),
